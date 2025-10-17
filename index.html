@@ -111,30 +111,33 @@
 	}
 
 	function createParty(){
-		totalBill = parseFloat(document.getElementById('total-bill').value);
-		tipPercent = parseFloat(document.getElementById('tip').value);
+  	  totalBill = parseFloat(document.getElementById('total-bill').value);
+  	  tipPercent = parseFloat(document.getElementById('tip').value);
 
-		if(isNaN(totalBill) || isNaN(tipPercent)){
-			alert("אנא מלאי את כל השדות");
-			return;
-		}
+  	  if(isNaN(totalBill) || isNaN(tipPercent)){
+    	    alert("אנא מלאי את כל השדות");
+    	    return;
+   	 }
 
-		partyId = generateRandomId();
-		const link = `${window.location.href}?party=${partyId}`;
-		document.getElementById('share-link').innerHTML = `🔗 שלחי לחברים את הקישור: <br>${link}`;
+  	  partyId = generateRandomId();
 
-		// Create party in database
-		db.ref('parties/' + partyId).set({
-			totalBill,
-			tipPercent,
-			members: []
-		});
+    // הצג את הקישור **לפני הסתרת ה-admin section**
+    	const link = `${window.location.href}?party=${partyId}`;
+   	 document.getElementById('share-link').innerHTML = `🔗 שלחי לחברים את הקישור: <br>${link}`;
 
-		document.getElementById('admin-section').style.display = "none";
-		document.getElementById('member-section').style.display = "block";
+    // צור מסד ב-Firebase
+  	  db.ref('parties/' + partyId).set({
+    	    totalBill,
+    	    tipPercent,
+     	   members: []
+  	  });
 
-		startListening();
-	}
+    // עכשיו אפשר להסתיר את ה-admin section אם רוצים
+    document.getElementById('admin-section').style.display = "none";
+    document.getElementById('member-section').style.display = "block";
+
+    startListening();
+}
 
 	function startListening(){
 		const partyRef = db.ref('parties/' + partyId);
