@@ -37,19 +37,27 @@
 		border-radius: 10px;
 		margin-top: 10px;
 	}
+	#share-link {
+		background: #e7f3ff;
+		padding: 10px;
+		border-radius: 8px;
+		word-break: break-all;
+		margin-top: 10px;
+	}
 </style>
 </head>
 <body>
 
 <h2>חלוקת חשבון במסעדה 🍽️</h2>
 
-<div id="admin-section">
+<div id="admin-section" style="display:none;">
 	<h3>שלב 1: הזיני את פרטי החשבון</h3>
 	<label>סה"כ חשבון (ש"ח):</label>
 	<input type="number" id="total-bill" placeholder="לדוגמה: 420">
 	<label>טיפ (%):</label>
 	<input type="number" id="tip" placeholder="לדוגמה: 12">
 	<button onclick="createParty()">צור חשבון חדש</button>
+	<div id="share-link"></div>
 </div>
 
 <div id="member-section" style="display:none;">
@@ -67,7 +75,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-	// Firebase config
 	const firebaseConfig = {
 		apiKey: "AIzaSyDBzEZS5fFGqc4rMBIPchSGsRkGi5mbSfM",
 		authDomain: "spliteat-6adac.firebaseapp.com",
@@ -78,42 +85,30 @@
 		measurementId: "G-M7ZRG6RBXS"
 	};
 
-	// Initialize Firebase
 	const app = firebase.initializeApp(firebaseConfig);
 	const analytics = firebase.analytics();
 	const db = firebase.firestore();
 
-	// Global variables
 	let partyRef;
 	let totalBill = 0;
 	let tipPercent = 0;
 	let members = [];
 
-	// Create a new party document
-	function createParty() {
-		totalBill = parseFloat(document.getElementById('total-bill').value);
-		tipPercent = parseFloat(document.getElementById('tip').value);
+	// Get partyId from URL
+	const urlParams = new URLSearchParams(window.location.search);
+	let partyId = urlParams.get("party");
 
-		if (isNaN(totalBill) || isNaN(tipPercent)) {
-			alert("אנא מלאי את כל השדות");
-			return;
-		}
-
-		// Hide admin, show members section
-		document.getElementById('admin-section').style.display = "none";
+	if(!partyId){
+		// No partyId → this user is the admin
+		document.getElementById('admin-section').style.display = "block";
+	}else{
+		// Party exists → hide admin section
 		document.getElementById('member-section').style.display = "block";
+		partyRef = db.collection("parties").doc(partyId);
 
-		// Create a new party document (with a fixed ID so everyone uses the same)
-		partyRef = db.collection("parties").doc("currentParty");
-		partyRef.set({
-			members: [],
-			totalBill,
-			tipPercent
-		});
-
-		// Listen for real-time updates
-		partyRef.onSnapshot((doc) => {
-			if (doc.exists) {
+		// Listen for updates
+		partyRef.onSnapshot((doc)=>{
+			if(doc.exists){
 				const data = doc.data();
 				members = data.members || [];
 				totalBill = data.totalBill;
@@ -123,22 +118,61 @@
 		});
 	}
 
-	// Add a member
-	function addMember() {
+	// Generate random ID
+	function generateRandomId(length=6){
+		return Math.random().toString(36).substring(2, 2+length);
+	}
+
+	function createParty(){
+		totalBill = parseFloat(document.getElementById('total-bill').value);
+		tipPercent = parseFloat(document.getElementById('tip').value);
+
+		if(isNaN(totalBill) || isNaN(tipPercent)){
+			alert("אנא מלאי את כל השדות");
+			return;
+		}
+
+		partyId = generateRandomId();
+		partyRef = db.collection("parties").doc(partyId);
+		partyRef.set({
+			members: [],
+			totalBill,
+			tipPercent
+		});
+
+		// Show share link
+		const link = `${window.location.href}?party=${partyId}`;
+		document.getElementById('share-link').innerHTML = `🔗 שלחי לחברים את הקישור: <br>${link}`;
+
+		document.getElementById('admin-section').style.display = "none";
+		document.getElementById('member-section').style.display = "block";
+
+		// Listen for updates
+		partyRef.onSnapshot((doc)=>{
+			if(doc.exists){
+				const data = doc.data();
+				members = data.members || [];
+				totalBill = data.totalBill;
+				tipPercent = data.tipPercent;
+				updateResult();
+			}
+		});
+	}
+
+	function addMember(){
 		const name = document.getElementById('name').value;
 		const meal = parseFloat(document.getElementById('meal').value);
 
-		if (!name || isNaN(meal)) {
+		if(!name || isNaN(meal)){
 			alert("אנא מלאי את שני השדות");
 			return;
 		}
 
-		const withTip = meal + (meal * tipPercent / 100);
+		const withTip = meal + (meal*tipPercent/100);
 
-		// Update Firestore
 		partyRef.update({
 			members: firebase.firestore.FieldValue.arrayUnion({
-				name, meal, withTip, paid: false
+				name, meal, withTip, paid:false
 			})
 		});
 
@@ -146,42 +180,38 @@
 		document.getElementById('meal').value = "";
 	}
 
-	// Toggle paid
-	function togglePaid(index) {
+	function togglePaid(index){
 		const member = members[index];
-		const updatedMember = { ...member, paid: !member.paid };
+		const updatedMember = {...member, paid: !member.paid};
 
-		// Remove old member and add updated member
 		partyRef.update({
 			members: firebase.firestore.FieldValue.arrayRemove(member)
-		}).then(() => {
+		}).then(()=>{
 			partyRef.update({
 				members: firebase.firestore.FieldValue.arrayUnion(updatedMember)
 			});
 		});
 	}
 
-	// Update HTML
-	function updateResult() {
+	function updateResult(){
 		let html = "<h3>סיכום התשלומים:</h3>";
 		let totalPaid = 0;
-		members.forEach((m, i) => {
+		members.forEach((m,i)=>{
 			html += `
 				<div class="member">
 					<b>${m.name}</b> — צריכה לשלם ${m.withTip.toFixed(2)} ₪
 					<br>
 					<button onclick="togglePaid(${i})">
-						${m.paid ? "✅ שולם" : "סמן כששולם"}
+						${m.paid?"✅ שולם":"סמן כששולם"}
 					</button>
 				</div>
 			`;
-			if (m.paid) totalPaid += m.withTip;
+			if(m.paid) totalPaid += m.withTip;
 		});
-		const grandTotal = totalBill + (totalBill * tipPercent / 100);
+		const grandTotal = totalBill + (totalBill*tipPercent/100);
 		html += `<p><b>סה"כ כולל טיפ:</b> ${grandTotal.toFixed(2)} ₪</p>`;
 		html += `<p><b>שולם עד כה:</b> ${totalPaid.toFixed(2)} ₪</p>`;
-		html += `<p><b>נותר לשלם:</b> ${(grandTotal - totalPaid).toFixed(2)} ₪</p>`;
-
+		html += `<p><b>נותר לשלם:</b> ${(grandTotal-totalPaid).toFixed(2)} ₪</p>`;
 		document.getElementById('result').innerHTML = html;
 	}
 </script>
