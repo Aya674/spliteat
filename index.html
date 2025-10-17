@@ -71,54 +71,41 @@
 
 <!-- Firebase scripts -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+	// Firebase config
 	const firebaseConfig = {
 		apiKey: "AIzaSyDBzEZS5fFGqc4rMBIPchSGsRkGi5mbSfM",
 		authDomain: "spliteat-6adac.firebaseapp.com",
+		databaseURL: "https://spliteat-6adac-default-rtdb.firebaseio.com/",
 		projectId: "spliteat-6adac",
-		storageBucket: "spliteat-6adac.firebasestorage.app",
+		storageBucket: "spliteat-6adac.appspot.com",
 		messagingSenderId: "474844140009",
-		appId: "1:474844140009:web:399027b5c93b0c2acbbb78",
-		measurementId: "G-M7ZRG6RBXS"
+		appId: "1:474844140009:web:399027b5c93b0c2acbbb78"
 	};
 
+	// Initialize Firebase
 	const app = firebase.initializeApp(firebaseConfig);
-	const analytics = firebase.analytics();
-	const db = firebase.firestore();
+	const db = firebase.database();
 
-	let partyRef;
+	let partyId;
 	let totalBill = 0;
 	let tipPercent = 0;
 	let members = [];
 
-	// Get partyId from URL
 	const urlParams = new URLSearchParams(window.location.search);
-	let partyId = urlParams.get("party");
+	partyId = urlParams.get("party");
 
 	if(!partyId){
-		// No partyId → this user is the admin
+		// Admin view
 		document.getElementById('admin-section').style.display = "block";
 	}else{
-		// Party exists → hide admin section
+		// Member view
 		document.getElementById('member-section').style.display = "block";
-		partyRef = db.collection("parties").doc(partyId);
-
-		// Listen for updates
-		partyRef.onSnapshot((doc)=>{
-			if(doc.exists){
-				const data = doc.data();
-				members = data.members || [];
-				totalBill = data.totalBill;
-				tipPercent = data.tipPercent;
-				updateResult();
-			}
-		});
+		startListening();
 	}
 
-	// Generate random ID
 	function generateRandomId(length=6){
 		return Math.random().toString(36).substring(2, 2+length);
 	}
@@ -133,24 +120,27 @@
 		}
 
 		partyId = generateRandomId();
-		partyRef = db.collection("parties").doc(partyId);
-		partyRef.set({
-			members: [],
-			totalBill,
-			tipPercent
-		});
-
-		// Show share link
 		const link = `${window.location.href}?party=${partyId}`;
 		document.getElementById('share-link').innerHTML = `🔗 שלחי לחברים את הקישור: <br>${link}`;
+
+		// Create party in database
+		db.ref('parties/' + partyId).set({
+			totalBill,
+			tipPercent,
+			members: []
+		});
 
 		document.getElementById('admin-section').style.display = "none";
 		document.getElementById('member-section').style.display = "block";
 
-		// Listen for updates
-		partyRef.onSnapshot((doc)=>{
-			if(doc.exists){
-				const data = doc.data();
+		startListening();
+	}
+
+	function startListening(){
+		const partyRef = db.ref('parties/' + partyId);
+		partyRef.on('value', (snapshot)=>{
+			const data = snapshot.val();
+			if(data){
 				members = data.members || [];
 				totalBill = data.totalBill;
 				tipPercent = data.tipPercent;
@@ -169,27 +159,25 @@
 		}
 
 		const withTip = meal + (meal*tipPercent/100);
+		const newMember = {name, meal, withTip, paid:false};
 
-		partyRef.update({
-			members: firebase.firestore.FieldValue.arrayUnion({
-				name, meal, withTip, paid:false
-			})
-		});
+		const partyRef = db.ref('parties/' + partyId + '/members');
+		partyRef.push(newMember);
 
 		document.getElementById('name').value = "";
 		document.getElementById('meal').value = "";
 	}
 
 	function togglePaid(index){
-		const member = members[index];
-		const updatedMember = {...member, paid: !member.paid};
-
-		partyRef.update({
-			members: firebase.firestore.FieldValue.arrayRemove(member)
-		}).then(()=>{
-			partyRef.update({
-				members: firebase.firestore.FieldValue.arrayUnion(updatedMember)
-			});
+		const partyRef = db.ref('parties/' + partyId + '/members');
+		partyRef.once('value', (snapshot)=>{
+			const membersData = snapshot.val();
+			const keys = Object.keys(membersData || {});
+			const key = keys[index];
+			if(key){
+				const member = membersData[key];
+				partyRef.child(key).update({paid: !member.paid});
+			}
 		});
 	}
 
