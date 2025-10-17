@@ -1,166 +1,189 @@
 <!DOCTYPE html>
 <html lang="he">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>חלוקת חשבון - SplitEat</title>
-	<style>
-		body {
-			font-family: Arial, sans-serif;
-			max-width: 600px;
-			margin: 30px auto;
-			padding: 20px;
-			background: #fafafa;
-			border-radius: 15px;
-			box-shadow: 0 0 10px rgba(0,0,0,0.1);
-			direction: rtl;
-		}
-		h2 { text-align: center; }
-		input, button {
-			width: 100%;
-			padding: 8px;
-			margin: 5px 0;
-			border-radius: 8px;
-			border: 1px solid #ccc;
-			font-size: 16px;
-		}
-		button {
-			background-color: #4CAF50;
-			color: white;
-			cursor: pointer;
-		}
-		button:hover {
-			background-color: #45a049;
-		}
-		.member {
-			background: white;
-			border: 1px solid #ddd;
-			padding: 10px;
-			border-radius: 10px;
-			margin-top: 10px;
-		}
-	</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>חלוקת חשבון - SplitEat</title>
+<style>
+	body {
+		font-family: Arial, sans-serif;
+		max-width: 600px;
+		margin: 30px auto;
+		padding: 20px;
+		background: #fafafa;
+		border-radius: 15px;
+		box-shadow: 0 0 10px rgba(0,0,0,0.1);
+		direction: rtl;
+	}
+	h2 { text-align: center; }
+	input, button {
+		width: 100%;
+		padding: 8px;
+		margin: 5px 0;
+		border-radius: 8px;
+		border: 1px solid #ccc;
+		font-size: 16px;
+	}
+	button {
+		background-color: #4CAF50;
+		color: white;
+		cursor: pointer;
+	}
+	button:hover { background-color: #45a049; }
+	.member {
+		background: white;
+		border: 1px solid #ddd;
+		padding: 10px;
+		border-radius: 10px;
+		margin-top: 10px;
+	}
+</style>
 </head>
 <body>
 
-	<h2>חלוקת חשבון במסעדה 🍽️</h2>
+<h2>חלוקת חשבון במסעדה 🍽️</h2>
 
-	<div id="admin-section">
-		<h3>שלב 1: הזיני את פרטי החשבון</h3>
-		<label>סה"כ חשבון (ש"ח):</label>
-		<input type="number" id="total-bill" placeholder="לדוגמה: 420">
-		
-		<label>טיפ (%):</label>
-		<input type="number" id="tip" placeholder="לדוגמה: 12">
+<div id="admin-section">
+	<h3>שלב 1: הזיני את פרטי החשבון</h3>
+	<label>סה"כ חשבון (ש"ח):</label>
+	<input type="number" id="total-bill" placeholder="לדוגמה: 420">
+	<label>טיפ (%):</label>
+	<input type="number" id="tip" placeholder="לדוגמה: 12">
+	<button onclick="createParty()">צור חשבון חדש</button>
+</div>
 
-		<button onclick="createParty()">צור חשבון חדש</button>
-	</div>
+<div id="member-section" style="display:none;">
+	<h3>שלב 2: כל חברה מזינה את הפרטים שלה</h3>
+	<input type="text" id="name" placeholder="השם שלך">
+	<input type="number" id="meal" placeholder="עלות המנה שלך">
+	<button onclick="addMember()">הוסיפי</button>
+</div>
 
-	<div id="member-section" style="display:none;">
-		<h3>שלב 2: כל חברה מזינה את הפרטים שלה</h3>
-		<input type="text" id="name" placeholder="השם שלך">
-		<input type="number" id="meal" placeholder="עלות המנה שלך">
-		<button onclick="addMember()">הוסיפי</button>
-	</div>
+<div id="result"></div>
 
-	<div id="result"></div>
+<!-- Firebase scripts -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-	<!-- Firebase scripts -->
-	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
-	<!-- Optional: add other Firebase services as needed -->
-	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+	// Firebase config
+	const firebaseConfig = {
+		apiKey: "AIzaSyDBzEZS5fFGqc4rMBIPchSGsRkGi5mbSfM",
+		authDomain: "spliteat-6adac.firebaseapp.com",
+		projectId: "spliteat-6adac",
+		storageBucket: "spliteat-6adac.firebasestorage.app",
+		messagingSenderId: "474844140009",
+		appId: "1:474844140009:web:399027b5c93b0c2acbbb78",
+		measurementId: "G-M7ZRG6RBXS"
+	};
 
-	<script>
-		// Firebase config
-		const firebaseConfig = {
-			apiKey: "AIzaSyDBzEZS5fFGqc4rMBIPchSGsRkGi5mbSfM",
-			authDomain: "spliteat-6adac.firebaseapp.com",
-			projectId: "spliteat-6adac",
-			storageBucket: "spliteat-6adac.firebasestorage.app",
-			messagingSenderId: "474844140009",
-			appId: "1:474844140009:web:399027b5c93b0c2acbbb78",
-			measurementId: "G-M7ZRG6RBXS"
-		};
+	// Initialize Firebase
+	const app = firebase.initializeApp(firebaseConfig);
+	const analytics = firebase.analytics();
+	const db = firebase.firestore();
 
-		// Initialize Firebase
-		const app = firebase.initializeApp(firebaseConfig);
-		const analytics = firebase.analytics();
-		// Example: initialize Firestore
-		const db = firebase.firestore();
+	// Global variables
+	let partyRef;
+	let totalBill = 0;
+	let tipPercent = 0;
+	let members = [];
 
-		// Your app logic
-		let totalBill = 0;
-		let tipPercent = 0;
-		let members = [];
+	// Create a new party document
+	function createParty() {
+		totalBill = parseFloat(document.getElementById('total-bill').value);
+		tipPercent = parseFloat(document.getElementById('tip').value);
 
-		function createParty() {
-			totalBill = parseFloat(document.getElementById('total-bill').value);
-			tipPercent = parseFloat(document.getElementById('tip').value);
+		if (isNaN(totalBill) || isNaN(tipPercent)) {
+			alert("אנא מלאי את כל השדות");
+			return;
+		}
 
-			if (isNaN(totalBill) || isNaN(tipPercent)) {
-				alert("אנא מלאי את כל השדות");
-				return;
+		// Hide admin, show members section
+		document.getElementById('admin-section').style.display = "none";
+		document.getElementById('member-section').style.display = "block";
+
+		// Create a new party document (with a fixed ID so everyone uses the same)
+		partyRef = db.collection("parties").doc("currentParty");
+		partyRef.set({
+			members: [],
+			totalBill,
+			tipPercent
+		});
+
+		// Listen for real-time updates
+		partyRef.onSnapshot((doc) => {
+			if (doc.exists) {
+				const data = doc.data();
+				members = data.members || [];
+				totalBill = data.totalBill;
+				tipPercent = data.tipPercent;
+				updateResult();
 			}
+		});
+	}
 
-			document.getElementById('admin-section').style.display = "none";
-			document.getElementById('member-section').style.display = "block";
+	// Add a member
+	function addMember() {
+		const name = document.getElementById('name').value;
+		const meal = parseFloat(document.getElementById('meal').value);
+
+		if (!name || isNaN(meal)) {
+			alert("אנא מלאי את שני השדות");
+			return;
 		}
 
-		function addMember() {
-			const name = document.getElementById('name').value;
-			const meal = parseFloat(document.getElementById('meal').value);
+		const withTip = meal + (meal * tipPercent / 100);
 
-			if (!name || isNaN(meal)) {
-				alert("אנא מלאי את שני השדות");
-				return;
-			}
+		// Update Firestore
+		partyRef.update({
+			members: firebase.firestore.FieldValue.arrayUnion({
+				name, meal, withTip, paid: false
+			})
+		});
 
-			const withTip = meal + (meal * tipPercent / 100);
-			members.push({ name, meal, withTip, paid: false });
+		document.getElementById('name').value = "";
+		document.getElementById('meal').value = "";
+	}
 
-			// Optional: save to Firestore
-			db.collection("parties").add({
-				name,
-				meal,
-				withTip,
-				tipPercent,
-				timestamp: firebase.firestore.FieldValue.serverTimestamp()
+	// Toggle paid
+	function togglePaid(index) {
+		const member = members[index];
+		const updatedMember = { ...member, paid: !member.paid };
+
+		// Remove old member and add updated member
+		partyRef.update({
+			members: firebase.firestore.FieldValue.arrayRemove(member)
+		}).then(() => {
+			partyRef.update({
+				members: firebase.firestore.FieldValue.arrayUnion(updatedMember)
 			});
+		});
+	}
 
-			updateResult();
+	// Update HTML
+	function updateResult() {
+		let html = "<h3>סיכום התשלומים:</h3>";
+		let totalPaid = 0;
+		members.forEach((m, i) => {
+			html += `
+				<div class="member">
+					<b>${m.name}</b> — צריכה לשלם ${m.withTip.toFixed(2)} ₪
+					<br>
+					<button onclick="togglePaid(${i})">
+						${m.paid ? "✅ שולם" : "סמן כששולם"}
+					</button>
+				</div>
+			`;
+			if (m.paid) totalPaid += m.withTip;
+		});
+		const grandTotal = totalBill + (totalBill * tipPercent / 100);
+		html += `<p><b>סה"כ כולל טיפ:</b> ${grandTotal.toFixed(2)} ₪</p>`;
+		html += `<p><b>שולם עד כה:</b> ${totalPaid.toFixed(2)} ₪</p>`;
+		html += `<p><b>נותר לשלם:</b> ${(grandTotal - totalPaid).toFixed(2)} ₪</p>`;
 
-			document.getElementById('name').value = "";
-			document.getElementById('meal').value = "";
-		}
-
-		function togglePaid(index) {
-			members[index].paid = !members[index].paid;
-			updateResult();
-		}
-
-		function updateResult() {
-			let html = "<h3>סיכום התשלומים:</h3>";
-			let totalPaid = 0;
-			members.forEach((m, i) => {
-				html += `
-					<div class="member">
-						<b>${m.name}</b> — צריכה לשלם ${m.withTip.toFixed(2)} ₪
-						<br>
-						<button onclick="togglePaid(${i})">
-							${m.paid ? "✅ שולם" : "סמן כששולם"}
-						</button>
-					</div>
-				`;
-				if (m.paid) totalPaid += m.withTip;
-			});
-			const grandTotal = totalBill + (totalBill * tipPercent / 100);
-			html += `<p><b>סה"כ כולל טיפ:</b> ${grandTotal.toFixed(2)} ₪</p>`;
-			html += `<p><b>שולם עד כה:</b> ${totalPaid.toFixed(2)} ₪</p>`;
-			html += `<p><b>נותר לשלם:</b> ${(grandTotal - totalPaid).toFixed(2)} ₪</p>`;
-
-			document.getElementById('result').innerHTML = html;
-		}
-	</script>
+		document.getElementById('result').innerHTML = html;
+	}
+</script>
 </body>
 </html>
