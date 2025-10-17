@@ -65,7 +65,31 @@
 
 	<div id="result"></div>
 
+	<!-- Firebase scripts -->
+	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+	<!-- Optional: add other Firebase services as needed -->
+	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
 	<script>
+		// Firebase config
+		const firebaseConfig = {
+			apiKey: "AIzaSyDBzEZS5fFGqc4rMBIPchSGsRkGi5mbSfM",
+			authDomain: "spliteat-6adac.firebaseapp.com",
+			projectId: "spliteat-6adac",
+			storageBucket: "spliteat-6adac.firebasestorage.app",
+			messagingSenderId: "474844140009",
+			appId: "1:474844140009:web:399027b5c93b0c2acbbb78",
+			measurementId: "G-M7ZRG6RBXS"
+		};
+
+		// Initialize Firebase
+		const app = firebase.initializeApp(firebaseConfig);
+		const analytics = firebase.analytics();
+		// Example: initialize Firestore
+		const db = firebase.firestore();
+
+		// Your app logic
 		let totalBill = 0;
 		let tipPercent = 0;
 		let members = [];
@@ -94,6 +118,16 @@
 
 			const withTip = meal + (meal * tipPercent / 100);
 			members.push({ name, meal, withTip, paid: false });
+
+			// Optional: save to Firestore
+			db.collection("parties").add({
+				name,
+				meal,
+				withTip,
+				tipPercent,
+				timestamp: firebase.firestore.FieldValue.serverTimestamp()
+			});
+
 			updateResult();
 
 			document.getElementById('name').value = "";
